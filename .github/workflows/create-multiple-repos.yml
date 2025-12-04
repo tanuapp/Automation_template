@@ -1,0 +1,43 @@
+name: Generate Repositories from Template
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    env:
+      ORG: "tanuapp" # Таны орг нэр
+      TEMPLATE: "Automation_template"
+
+    steps:
+      - name: Checkout self
+        uses: actions/checkout@v3
+
+      - name: Create and initialize new repositories
+        run: |
+          # Шинэ репонуудын жагсаалт
+          REPOS=("tanu-frontend" "tanu-admin" "tanu-backend")
+
+          for REPO in "${REPOS[@]}"; do
+            echo "Creating $REPO ..."
+
+            # 1) Repo үүсгэх
+            curl -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+              https://api.github.com/orgs/$ORG/repos \
+              -d "{\"name\":\"$REPO\", \"private\":true}"
+
+            # 2) Template кодыг push хийх
+            echo "Pushing template into $REPO ..."
+
+            git clone https://github.com/$ORG/$TEMPLATE.git temp
+            cd temp
+
+            git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$ORG/$REPO.git
+            git push origin main --force
+
+            cd ..
+            rm -rf temp
+          done
